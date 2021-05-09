@@ -28,7 +28,6 @@ class Command :
         pass
 
     def __repr__(self) :
-        print("Here")
         return f'Command(command={self.command},target={self.target},ports={self.ports},mode={self.mode},count={self.count},type={attacks[self.aType]},slaves={self.slaves})'
 
 class ArgParseError(Exception) :
