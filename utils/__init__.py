@@ -24,6 +24,7 @@ class Command :
     aType = None
     ports = None
     mode = None 
+    n = None
 
     def __init__(self) :
         pass
@@ -55,6 +56,7 @@ def parse_args(args) :
     cmd.duration = 30
     cmd.slaves = 255
     cmd.aType = '0'
+    cmd.n = 0
 
     for i in range(1,length) :
         try :
@@ -96,6 +98,9 @@ def parse_args(args) :
                     cmd.ports = '1-65535'
                 if len(cmd.ports.split('-')) == 1 :
                     cmd.ports = f'{cmd.ports}-{cmd.ports}' 
+            
+            elif flag in ['-n','--number'] :
+                cmd.n = int(args[i+1])
         except IndexError :
             raise ArgParseError('Incomplete Command')
         except BaseException as e :

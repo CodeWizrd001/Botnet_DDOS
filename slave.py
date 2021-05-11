@@ -11,7 +11,7 @@ class SlaveServer(Server) :
 
         while True :
             cmd = client.recv(self.ReadBuffer).decode()
-            print(f"Command {cmd}")
+            # print(f"Command {cmd}")
             if cmd == "ping" :
                 print(Log("Ping Check"))
 

